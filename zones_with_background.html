@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8" />
+    <title>Зони и глоби между София и Пловдив</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: 20px auto;
+            padding: 10px;
+            background-image: url('A_looping_two-dimensional_digital_illustration_ani.png');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+        }
+        .zone {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        label, select, input {
+            margin: 5px 0;
+            display: block;
+        }
+        button {
+            margin-top: 10px;
+        }
+        h2 {
+            border-bottom: 1px solid #fff;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Калкулатор на зони и глоби (София - Пловдив)</h1>
+    <p>Разстояние: 140 км, зони: 7, всяка зона около 20 км.</p>
+
+    <div id="zonesContainer"></div>
+
+    <script>
+        const totalDistance = 140;
+        const totalZones = 7;
+        const zoneLength = totalDistance / totalZones;
+        const speedLimits = [30,40,50,60,70,80,90,100,110,120,130,140,150,160];
+
+        function calculateFine(speedExceeded) {
+            if (speedExceeded <= 0) return "Няма превишение, няма глоба.";
+            if (speedExceeded <= 10) return "Глоба: 20 лв.";
+            if (speedExceeded <= 20) return "Глоба: 50 лв.";
+            if (speedExceeded <= 30) return "Глоба: 100 лв.";
+            return "Глоба: 600 лв. (или повече според КАТ)";
+        }
+
+        function createZoneElement(index) {
+            const zoneDiv = document.createElement("div");
+            zoneDiv.className = "zone";
+            zoneDiv.innerHTML = `
+                <h2>Зона ${index + 1}</h2>
+                <label for="speedLimit${index}">Избери разрешена скорост (км/ч):</label>
+                <select id="speedLimit${index}">
+                    ${speedLimits.map(s => `<option value="${s}">${s} км/ч</option>`).join('')}
+                </select>
+                <label for="actualSpeed${index}">Въведи твоята скорост (км/ч):</label>
+                <input type="number" id="actualSpeed${index}" min="0" placeholder="Например 80" />
+                <button onclick="calculateZoneFine(${index})">Изчисли глоба</button>
+                <p id="fineResult${index}" style="font-weight:bold; margin-top:10px;"></p>
+            `;
+            return zoneDiv;
+        }
+
+        function calculateZoneFine(index) {
+            const speedLimit = parseInt(document.getElementById(`speedLimit${index}`).value);
+            const actualSpeedInput = document.getElementById(`actualSpeed${index}`);
+            const fineResult = document.getElementById(`fineResult${index}`);
+            const actualSpeed = parseFloat(actualSpeedInput.value);
+            if (isNaN(actualSpeed) || actualSpeed < 0) {
+                fineResult.innerText = "Моля, въведи валидна скорост.";
+                return;
+            }
+            const speedExceeded = actualSpeed - speedLimit;
+            fineResult.innerText = calculateFine(speedExceeded);
+        }
+
+        function createZones() {
+            const container = document.getElementById("zonesContainer");
+            container.innerHTML = "";
+            for(let i = 0; i < totalZones; i++) {
+                container.appendChild(createZoneElement(i));
+            }
+        }
+
+        createZones();
+    </script>
+
+</body>
+</html>
