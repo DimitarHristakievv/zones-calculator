@@ -6,7 +6,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 700px;
+            max-width: 800px;
             margin: 20px auto;
             padding: 10px;
             background-image: url('A_looping_two-dimensional_digital_illustration_ani.png');
@@ -34,6 +34,13 @@
             border-bottom: 1px solid #fff;
             padding-bottom: 5px;
         }
+        #totalResult {
+            margin-top: 20px;
+            font-size: 18px;
+            background-color: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
@@ -43,18 +50,49 @@
 
     <div id="zonesContainer"></div>
 
+    <button onclick="calculateTotal()" style="margin-top:20px; padding:10px 20px; font-size:16px;">📊 Изчисли общ резултат</button>
+    <div id="totalResult"></div>
+
     <script>
         const totalDistance = 140;
         const totalZones = 7;
         const zoneLength = totalDistance / totalZones;
         const speedLimits = [30,40,50,60,70,80,90,100,110,120,130,140,150,160];
 
-        function calculateFine(speedExceeded) {
-            if (speedExceeded <= 0) return "Няма превишение, няма глоба.";
-            if (speedExceeded <= 10) return "Глоба: 20 лв.";
-            if (speedExceeded <= 20) return "Глоба: 50 лв.";
-            if (speedExceeded <= 30) return "Глоба: 100 лв.";
-            return "Глоба: 600 лв. (или повече според КАТ)";
+        function calculateFine(speedExceeded, isUrban) {
+            let fine = 0;
+            let points = 0;
+            let license = "Без отнемане";
+
+            if (speedExceeded <= 0) {
+                return { fine: 0, text: "Няма превишение, няма глоба.", points, license };
+            }
+
+            if (speedExceeded <= 10) {
+                fine = 20; points = 0;
+            } else if (speedExceeded <= 20) {
+                fine = 50; points = 2;
+            } else if (speedExceeded <= 30) {
+                fine = 100; points = 4;
+            } else if (speedExceeded <= 40) {
+                fine = 400; points = 6;
+            } else if (speedExceeded <= 50) {
+                fine = 600; points = 8;
+                license = isUrban ? "3 месеца" : "Без отнемане";
+            } else if (speedExceeded <= 60) {
+                fine = 700; points = 10;
+                license = isUrban ? "6 месеца" : "3 месеца";
+            } else {
+                fine = 1000; points = 12;
+                license = isUrban ? "12 месеца или повече" : "6 месеца";
+            }
+
+            return {
+                fine,
+                text: `Глоба: ${fine} лв.<br>Контролни точки: ${points}<br>Отнемане на СУМПС: ${license}`,
+                points,
+                license
+            };
         }
 
         function createZoneElement(index) {
@@ -67,7 +105,12 @@
                     ${speedLimits.map(s => `<option value="${s}">${s} км/ч</option>`).join('')}
                 </select>
                 <label for="actualSpeed${index}">Въведи твоята скорост (км/ч):</label>
-                <input type="number" id="actualSpeed${index}" min="0" placeholder="Например 80" />
+                <input type="number" id="actualSpeed${index}" min="0" placeholder="Например 90" />
+                <label for="urban${index}">Зона в населено място?</label>
+                <select id="urban${index}">
+                    <option value="true">Да</option>
+                    <option value="false">Не</option>
+                </select>
                 <button onclick="calculateZoneFine(${index})">Изчисли глоба</button>
                 <p id="fineResult${index}" style="font-weight:bold; margin-top:10px;"></p>
             `;
@@ -76,21 +119,58 @@
 
         function calculateZoneFine(index) {
             const speedLimit = parseInt(document.getElementById(`speedLimit${index}`).value);
-            const actualSpeedInput = document.getElementById(`actualSpeed${index}`);
+            const actualSpeed = parseFloat(document.getElementById(`actualSpeed${index}`).value);
+            const isUrban = document.getElementById(`urban${index}`).value === "true";
             const fineResult = document.getElementById(`fineResult${index}`);
-            const actualSpeed = parseFloat(actualSpeedInput.value);
+
             if (isNaN(actualSpeed) || actualSpeed < 0) {
                 fineResult.innerText = "Моля, въведи валидна скорост.";
                 return;
             }
+
             const speedExceeded = actualSpeed - speedLimit;
-            fineResult.innerText = calculateFine(speedExceeded);
+            const fine = calculateFine(speedExceeded, isUrban);
+            fineResult.innerHTML = fine.text;
+        }
+
+        function parseFineAmount(text) {
+            const match = text.match(/Глоба: (\d+)/);
+            return match ? parseInt(match[1]) : 0;
+        }
+
+        function calculateTotal() {
+            let totalFine = 0;
+            let totalPoints = 0;
+            let banDurations = ["Без отнемане", "3 месеца", "6 месеца", "12 месеца или повече"];
+            let maxBanIndex = 0;
+
+            for (let i = 0; i < totalZones; i++) {
+                const fineText = document.getElementById(`fineResult${i}`).innerText || "";
+                totalFine += parseFineAmount(fineText);
+
+                const pointMatch = fineText.match(/Контролни точки: (\d+)/);
+                if (pointMatch) totalPoints += parseInt(pointMatch[1]);
+
+                const banMatch = fineText.match(/Отнемане на СУМПС: (.+)/);
+                if (banMatch) {
+                    const ban = banMatch[1].trim();
+                    const idx = banDurations.indexOf(ban);
+                    if (idx > maxBanIndex) maxBanIndex = idx;
+                }
+            }
+
+            const resultText = `
+                🧾 Обща глоба: <strong>${totalFine} лв.</strong><br>
+                📍 Общо отнети контролни точки: <strong>${totalPoints}</strong><br>
+                🚫 Най-дълго отнемане на книжка: <strong>${banDurations[maxBanIndex]}</strong>
+            `;
+            document.getElementById("totalResult").innerHTML = resultText;
         }
 
         function createZones() {
             const container = document.getElementById("zonesContainer");
             container.innerHTML = "";
-            for(let i = 0; i < totalZones; i++) {
+            for (let i = 0; i < totalZones; i++) {
                 container.appendChild(createZoneElement(i));
             }
         }
